@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pizza Districts — The K-Means Challenge</title>
+<style>
+:root{--bg:#10131d;--panel:#191e2c;--panel2:#202739;--ink:#f5f6fb;--muted:#a7b0c6;--line:#333d53;--lime:#c8f169;--coral:#ff806e;--blue:#7ab8ff;--gold:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#26334b 0,transparent 40%),var(--bg);color:var(--ink);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:11px 15px;font-weight:750;transition:transform .15s,filter .15s}button:hover{filter:brightness(1.08);transform:translateY(-1px)}button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.primary{background:var(--lime);color:#17200d}.secondary{background:#303b53;color:var(--ink);border:1px solid #46516b}.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+header{max-width:1240px;margin:auto;padding:26px 24px 16px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{display:flex;align-items:center;gap:12px}.logo{width:44px;height:44px;border-radius:14px;background:var(--lime);display:grid;place-items:center;font-size:25px;box-shadow:0 8px 30px #c8f16922}.eyebrow{font-size:11px;letter-spacing:.17em;text-transform:uppercase;color:var(--lime);font-weight:850}.brand h1{margin:2px 0 0;font-size:22px;letter-spacing:-.04em}.level{border:1px solid #3b465d;background:#1a2130;border-radius:999px;padding:8px 13px;color:var(--muted);font-size:12px;font-weight:750}
+main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justify-content:space-between;gap:30px;align-items:end;margin:10px 0 22px}.intro h2{font-size:clamp(28px,4vw,42px);letter-spacing:-.055em;line-height:1.05;margin:8px 0 10px;max-width:720px}.intro p{margin:0;color:var(--muted);max-width:700px}.goal{min-width:205px;border:1px solid #3c4a3a;background:#1c2827;padding:14px 16px;border-radius:16px}.goal small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.12em}.goal strong{display:block;color:var(--lime);font-size:22px;margin-top:3px}
+.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.8fr);gap:18px;align-items:stretch}.panel{background:linear-gradient(145deg,#1c2232,#171c29);border:1px solid #30394d;border-radius:22px;overflow:hidden;box-shadow:0 18px 50px #0002}.map-head{padding:17px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}.map-head h3,.side h3{margin:0;font-size:15px}.map-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.map-meta{font-size:12px;color:var(--muted);white-space:nowrap}.map-wrap{padding:10px;background:#151b28;position:relative}.map-wrap svg{display:block;width:100%;height:auto;touch-action:none;user-select:none}.map-foot{display:flex;flex-wrap:wrap;gap:14px;padding:12px 19px;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}.legend{display:flex;align-items:center;gap:7px}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}.shop-key{width:12px;height:12px;border-radius:3px;display:inline-block;transform:rotate(45deg)}
+.side{padding:20px;display:flex;flex-direction:column;gap:18px}.side-intro{color:var(--muted);font-size:13px;margin:5px 0 0}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#222a3c;border:1px solid #303b51;border-radius:15px;padding:13px}.stat span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}.stat strong{display:block;font-size:25px;letter-spacing:-.04em;margin-top:3px}.stat em{font-size:11px;color:var(--muted);font-style:normal}.section-label{color:#8d9ab5;text-transform:uppercase;letter-spacing:.14em;font-size:10px;font-weight:850;margin-bottom:8px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions button:first-child{grid-column:1/-1}.hint{border:1px solid #3d4b35;background:#202a25;padding:13px;border-radius:14px;font-size:13px;color:#d8e7c9}.hint b{color:var(--lime)}.progress{height:5px;background:#30394c;border-radius:99px;overflow:hidden;margin-top:10px}.progress span{display:block;height:100%;background:var(--lime);width:0%;transition:width .3s}.concept{border-top:1px solid var(--line);padding-top:15px}.concept p{margin:5px 0 0;color:var(--muted);font-size:12px}.concept code{color:var(--lime);font-family:ui-monospace,monospace}.rounds{display:flex;gap:6px;margin-top:10px}.round{height:5px;flex:1;background:#343e52;border-radius:9px}.round.done{background:var(--lime)}
+.bottom{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;margin-top:18px}.bottom .panel{padding:18px 20px}.bottom h3{margin:0 0 10px;font-size:14px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.step{background:#202739;border:1px solid #30394d;padding:12px;border-radius:13px}.step .num{color:var(--lime);font-size:11px;font-weight:900;letter-spacing:.12em}.step b{display:block;font-size:13px;margin:5px 0 3px}.step p{font-size:12px;color:var(--muted);margin:0}.insight{color:var(--muted);font-size:13px;margin:0}.insight strong{color:var(--ink)}.toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,20px);background:var(--lime);color:#18200e;padding:12px 18px;border-radius:12px;font-weight:800;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 10px 30px #0005}.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.side{gap:15px}.bottom{grid-template-columns:1fr}.intro{align-items:start;flex-direction:column}.goal{width:100%}header{padding:20px 16px 12px}main{padding:0 16px 28px}}
+@media(max-width:480px){.map-head{align-items:start;flex-direction:column}.steps{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.brand h1{font-size:18px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">🍕</div><div><div class="eyebrow">Cluster Quest / Lab 01</div><h1>Pizza Districts</h1></div></div>
+  <div class="level">GRADUATE MODE · <span id="roundLabel">ROUND 1 / 3</span></div>
+</header>
+<main>
+  <section class="intro">
+    <div><div class="eyebrow">The dispatch challenge</div><h2>Three shops. One city.<br>Zero wasted miles.</h2><p>You’re launching a pizza chain. Place exactly <strong>3 shops</strong> so every house can get a hot pizza with the shortest possible trip. Drag the shops, study the delivery zones, and beat the benchmark.</p></div>
+    <div class="goal"><small>Best possible route score</small><strong id="benchmark">—</strong><small>Estimated benchmark for this map</small></div>
+  </section>
+  <section class="layout">
+    <div class="panel">
+      <div class="map-head"><div><h3>📍 Your city grid</h3><p>Drag any shop marker to reposition it. Houses always belong to their nearest shop.</p></div><div class="map-meta"><span id="houseCount">24</span> houses · fixed k = 3</div></div>
+      <div class="map-wrap"><svg id="city" viewBox="0 0 720 470" role="img" aria-label="Interactive city map with houses and three draggable pizza shops"></svg></div>
+      <div class="map-foot"><span class="legend"><i class="dot" style="background:#f5f6fb"></i> House</span><span class="legend"><i class="shop-key" style="background:#c8f169"></i> Pizza shop / centroid</span><span class="legend"><i class="dot" style="background:#7ab8ff"></i> Zone A</span><span class="legend"><i class="dot" style="background:#ff806e"></i> Zone B</span><span class="legend"><i class="dot" style="background:#ffd166"></i> Zone C</span></div>
+    </div>
+    <aside class="panel side">
+      <div><div class="section-label">Live performance</div><h3>How efficient is your city?</h3><p class="side-intro">Your score updates every time you move a shop. Lower is better.</p></div>
+      <div class="stats"><div class="stat"><span>Total delivery distance</span><strong id="distance">—</strong><em>sum of house → shop distances</em></div><div class="stat"><span>K-means objective</span><strong id="sse">—</strong><em>sum of squared distances</em></div><div class="stat"><span>Avg. trip</span><strong id="average">—</strong><em>distance per house</em></div><div class="stat"><span>Efficiency</span><strong id="efficiency">—</strong><em>vs. benchmark objective</em></div></div>
+      <div><div class="section-label">Dispatch controls</div><div class="actions"><button class="primary" id="iterate">▶ Run 1 k-means iteration</button><button class="secondary" id="auto">✦ Auto-optimize</button><button class="secondary" id="reset">↺ Reset shops</button><button class="ghost" id="next">Next city →</button></div></div>
+      <div class="hint" id="hint"><b>Mission:</b> Move the shops near groups of houses. Then run one iteration to see how centroids shift to the mean of their assigned houses.</div>
+      <div><div class="section-label">Challenge progress</div><div class="rounds"><div class="round done" id="r1"></div><div class="round" id="r2"></div><div class="round" id="r3"></div></div><div class="progress"><span id="progress"></span></div></div>
+      <div class="concept"><div class="section-label">The idea behind the game</div><h3>Assignment ↔ Update</h3><p><code>k-means</code> repeats two steps: assign each house to its nearest centroid, then move each centroid to the mean of its cluster. Repeat until positions stop changing. This optimizes squared Euclidean distance—not necessarily the sum of raw distances.</p></div>
+    </aside>
+  </section>
+  <section class="bottom">
+    <div class="panel"><h3>🧠 The algorithm, in three moves</h3><div class="steps"><div class="step"><div class="num">01 / ASSIGN</div><b>Find the nearest shop</b><p>Each house joins the cluster with the closest centroid.</p></div><div class="step"><div class="num">02 / UPDATE</div><b>Move to the mean</b><p>Each shop moves to the average x and y of its assigned houses.</p></div><div class="step"><div class="num">03 / REPEAT</div><b>Converge</b><p>Keep going until the shop locations stop changing.</p></div></div></div>
+    <div class="panel"><h3>📊 Researcher’s takeaway</h3><p class="insight" id="insight">Watch the objective after each iteration. K-means is sensitive to initialization: different starting positions can converge to different local minima. Compare your manual placement with auto-optimization.</p></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(() => {
+ const colors=['#7ab8ff','#ff806e','#ffd166'];
+ const city=document.getElementById('city');
+ const rounds=[
+  {name:'Starterville',houses:[[110,100],[130,130],[160,105],[175,145],[125,175],[190,180],[220,125],[205,95],[380,100],[420,120],[450,95],[475,140],[400,165],[450,185],[500,170],[470,205],[260,330],[290,360],[320,320],[350,370],[385,335],[330,400],[280,405],[390,405]],shops:[[180,220],[360,230],[540,300]]},
+  {name:'Riverside',houses:[[85,90],[110,130],[135,100],[155,150],[180,115],[205,160],[125,190],[170,205],[420,85],[455,115],[490,95],[520,140],[460,175],[510,195],[550,165],[580,210],[245,310],[275,350],[305,320],[330,370],[360,340],[300,410],[355,420],[395,390],[210,390],[235,420]],shops:[[110,260],[360,240],[570,300]]},
+  {name:'Metrovale',houses:[[90,90],[120,120],[155,90],[185,130],[215,105],[175,175],[110,190],[220,195],[350,80],[385,110],[420,85],[450,130],[390,160],[455,185],[500,160],[530,200],[300,300],[330,335],[365,310],[400,355],[435,325],[385,400],[330,410],[280,385],[490,390],[530,420],[560,375],[580,335]],shops:[[220,260],[390,230],[500,280]]}
+ ];
+ let round=0, houses=[], shops=[], dragging=-1, doneRounds=new Set(), history=[];
+ const $=id=>document.getElementById(id);
+ const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+ function initRound(n){round=n;houses=rounds[n].houses.map(p=>p.slice());shops=rounds[n].shops.map(p=>p.slice());history=[];$('roundLabel').textContent=`ROUND ${n+1} / 3`;$('houseCount').textContent=houses.length;$('hint').innerHTML='<b>Mission:</b> Move the shops near groups of houses. Then run one iteration to see how centroids shift to the mean of their assigned houses.';$('insight').textContent='Watch the objective after each iteration. K-means is sensitive to initialization: different starting positions can converge to different local minima. Compare your manual placement with auto-optimization.';render();update();}
+ function assignment(){return houses.map(h=>{let best=0;for(let i=1;i<3;i++)if(dist(h,shops[i])<dist(h,shops[best]))best=i;return best;});}
+ function metrics(){const as=assignment();let total=0,sse=0;houses.forEach((h,i)=>{const d=dist(h,shops[as[i]]);total+=d;sse+=d*d;});return {as,total,sse,avg:total/houses.length};}
+ function optimize(seed){let best=null;for(let run=0;run<14;run++){let centers=run===0?shops.map(p=>p.slice()):Array.from({length:3},()=>houses[Math.floor(Math.random()*houses.length)].slice());for(let it=0;it<80;it++){let as=houses.map(h=>{let b=0;for(let j=1;j<3;j++)if(dist(h,centers[j])<dist(h,centers[b]))b=j;return b;});let next=centers.map((c,j)=>{let group=houses.filter((h,i)=>as[i]===j);if(!group.length)return c;return [group.reduce((s,p)=>s+p[0],0)/group.length,group.reduce((s,p)=>s+p[1],0)/group.length];});if(next.every((p,j)=>dist(p,centers[j])<.01)){centers=next;break;}centers=next;}let score=houses.reduce((s,h)=>{let d=Math.min(...centers.map(c=>dist(h,c)));return s+d*d;},0);if(!best||score<best.score)best={centers,score};}return best;}
+ let benchmarkCache={};
+ function benchmark(){if(!benchmarkCache[round])benchmarkCache[round]=optimize().score;return benchmarkCache[round];}
+ function update(){const m=metrics(),b=benchmark();$('distance').textContent=m.total.toFixed(0);$('sse').textContent=m.sse.toFixed(0);$('average').textContent=m.avg.toFixed(1);$('efficiency').textContent=Math.max(0,Math.min(100,Math.round(100*(1-m.sse/Math.max(b,m.sse)))))+'%';$('benchmark').textContent=b.toFixed(0)+' SSE';$('progress').style.width=Math.max(0,Math.min(100,100*(1-m.sse/Math.max(b,m.sse))))+'%';render();}
+ function render(){const m=metrics();let s='<defs><pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M 36 0 L 0 0 0 36" fill="none" stroke="#293449" stroke-width="1"/></pattern></defs><rect width="720" height="470" rx="15" fill="#151b28"/><rect width="720" height="470" fill="url(#grid)"/>';
+ // subtle roads
+ s+='<path d="M0 240 H720 M250 0 V470 M510 0 V470" stroke="#242e41" stroke-width="12" fill="none"/><path d="M0 240 H720 M250 0 V470 M510 0 V470" stroke="#354056" stroke-width="1.5" stroke-dasharray="7 9" fill="none"/>';
+ houses.forEach((h,i)=>{let c=colors[m.as[i]];s+=`<line x1="${h[0]}" y1="${h[1]}" x2="${shops[m.as[i]][0]}" y2="${shops[m.as[i]][1]}" stroke="${c}" stroke-opacity=".17" stroke-width="1.3"/>`;});
+ houses.forEach((h,i)=>{s+=`<circle cx="${h[0]}" cy="${h[1]}" r="5.3" fill="${colors[m.as[i]]}" stroke="#f6f7fb" stroke-width="1.1"><title>House ${i+1} · Zone ${String.fromCharCode(65+m.as[i])}</title></circle>`;});
+ shops.forEach((p,i)=>{s+=`<g class="shop" data-shop="${i}" style="cursor:grab"><circle cx="${p[0]}" cy="${p[1]}" r="21" fill="${colors[i]}" fill-opacity=".13"/><rect x="${p[0]-12}" y="${p[1]-12}" width="24" height="24" rx="6" fill="${colors[i]}" stroke="#10131d" stroke-width="2.5"/><text x="${p[0]}" y="${p[1]+5}" text-anchor="middle" font-size="15" font-weight="900" fill="#111724">${i+1}</text><text x="${p[0]}" y="${p[1]-27}" text-anchor="middle" font-size="11" font-weight="800" fill="${colors[i]}">SHOP ${String.fromCharCode(65+i)}</text></g>`;});
+ s+='<text x="18" y="452" fill="#71809c" font-size="10" letter-spacing="1.5">NORTH DISTRICT</text><text x="702" y="452" text-anchor="end" fill="#71809c" font-size="10" letter-spacing="1.5">'+rounds[round].name.toUpperCase()+'</text>';
+ city.innerHTML=s;
+ city.querySelectorAll('.shop').forEach(el=>{el.addEventListener('pointerdown',e=>{dragging=+el.dataset.shop;city.setPointerCapture?.(e.pointerId);e.preventDefault();});});
+ }
+ function point(evt){const r=city.getBoundingClientRect();return [(evt.clientX-r.left)*720/r.width,(evt.clientY-r.top)*470/r.height];}
+ city.addEventListener('pointermove',e=>{if(dragging<0)return;let p=point(e);shops[dragging]=[Math.max(20,Math.min(700,p[0])),Math.max(25,Math.min(440,p[1]))];update();});
+ city.addEventListener('pointerup',()=>{dragging=-1;});city.addEventListener('pointercancel',()=>{dragging=-1;});
+ function iterate(){const before=shops.map(p=>p.slice()),as=assignment();shops=shops.map((p,j)=>{const g=houses.filter((h,i)=>as[i]===j);return g.length?[g.reduce((s,h)=>s+h[0],0)/g.length,g.reduce((s,h)=>s+h[1],0)/g.length]:p;});const moved=shops.reduce((s,p,j)=>s+dist(p,before[j]),0);update();$('hint').innerHTML=moved<.5?'<b>Converged!</b> The shops barely moved. This initialization has reached a stable solution. Try Reset or a new starting position to compare outcomes.':`<b>Centroids updated.</b> The shops moved ${moved.toFixed(1)} map units toward the means of their assigned houses. Run another iteration or auto-optimize.`;if(moved<.5){doneRounds.add(round);updateRounds();} }
+ function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2100);}
+ function updateRounds(){for(let i=0;i<3;i++)$('r'+(i+1)).classList.toggle('done',doneRounds.has(i));if(doneRounds.size===3)toast('All cities explored — you’re a clustering strategist!');}
+ $('iterate').onclick=iterate;
+ $('auto').onclick=()=>{const old=metrics().sse, result=optimize();shops=result.centers.map(p=>p.slice());doneRounds.add(round);update();updateRounds();$('hint').innerHTML=`<b>Optimization complete.</b> The search found a stable solution with SSE ${result.score.toFixed(0)}. Compare it with your manual placement—initialization can change the final answer.`;$('insight').innerHTML=`<strong>Local minima matter.</strong> The best of multiple starts scored ${result.score.toFixed(0)} SSE, compared with ${old.toFixed(0)} before optimization. K-means does not guarantee the global optimum.`;toast('Shops optimized!');};
+ $('reset').onclick=()=>{shops=rounds[round].shops.map(p=>p.slice());history=[];update();$('hint').innerHTML='<b>Reset complete.</b> Try moving one shop far from a group, then run an iteration. Notice how assignments and means interact.';};
+ $('next').onclick=()=>{if(round<2){doneRounds.add(round);updateRounds();initRound(round+1);}else{doneRounds.add(round);updateRounds();initRound(0);toast('Back to the first city. Try to beat your previous score!');}};
+ initRound(0);
+})();
+</script>
+</body>
+</html>
