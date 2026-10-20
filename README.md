@@ -12,12 +12,18 @@ Open `index.html` in a modern browser. No build step, dependencies, API keys, or
 4. Under **Build and deployment**, select **Deploy from a branch**, choose `main` and `/(root)`, then save.
 5. Wait for the Pages deployment workflow to finish; GitHub will show the site URL in Settings → Pages.
 
-## Learning interactions
-- Drag exactly three shop/centroid markers.
-- Houses are assigned to their nearest shop and colored by delivery zone.
-- Live metrics show total Euclidean delivery distance, average trip, and the k-means sum-of-squared-errors (SSE) objective.
-- Run one assignment/update iteration or run a multi-start auto-optimization.
-- Explore three city layouts and discuss sensitivity to initialization and local minima.
+## Game features
+- Custom storefront graphics for the three draggable pizza-shop centroids, plus an updated map legend.
+- Guided prompt encourages students to place shops manually before running k-means.
+- Exactly three shops in every round; houses are assigned to their nearest shop.
+- Live metrics for total Euclidean delivery distance, average trip, and the k-means sum-of-squared-errors (SSE) objective.
+- Run one assignment/update iteration or use a multi-start auto-optimization. The game explicitly notes that one iteration—and convergence—does not guarantee the global optimum.
+- Five progressively harder cities:
+  1. **Starterville:** 24 houses in three clearly separated neighborhoods.
+  2. **Riverside:** overlapping neighborhoods and more ambiguous assignments.
+  3. **Metrovale:** overlap and distant outliers.
+  4. **Harbor District:** uneven cluster sizes and bridge houses.
+  5. **Night Shift:** ambiguous structure, bridge houses, and outliers to motivate comparison across initializations.
 
 ## Teaching note
-Classical k-means minimizes the **sum of squared Euclidean distances** to centroids. The game also reports the sum of raw delivery distances to connect the mathematical objective to the scenario, but those two objectives are not identical. The benchmark is a heuristic best-of-multiple-starts estimate, not a proof of the global optimum.
+Classical k-means minimizes the **sum of squared Euclidean distances** to centroids. The game also reports the sum of raw delivery distances to connect the mathematical objective to the scenario, but those two objectives are not identical. The benchmark and auto-optimization use multiple starts as a heuristic; neither proves the global optimum.
