@@ -38,7 +38,7 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
       <div class="map-head"><div><h3>📍 Your city grid</h3><p>Click the map to place stores, drag them to move. Houses always belong to their nearest store.</p><div class="difficulty" id="mapDifficulty">Level 1 · Clear neighborhoods</div><div class="aids" id="aids" title="Visual aids fade as the cities get harder"></div></div><div class="map-meta"><span id="houseCount">24</span> houses · <span id="shopMeta">you choose k</span></div></div>
       <div class="play-prompt" id="playPrompt"></div>
       <div class="map-wrap"><svg id="city" viewBox="0 0 720 470" role="img" aria-label="Interactive city map with houses and draggable pizza stores"></svg><svg class="overlay" id="runners" viewBox="0 0 720 470" aria-hidden="true"></svg></div>
-      <div class="map-foot"><span class="legend"><i class="house-key"></i> House / data point</span><span class="legend"><svg class="shop-key" viewBox="0 0 28 26" aria-hidden="true"><path d="M4 10h20v14H4z" fill="#c8f169" stroke="#10131d" stroke-width="1.5"/><path d="M2 10 5 2h18l3 8z" fill="#ff806e" stroke="#10131d" stroke-width="1.5"/><path d="M7 3 5 10h5l1-7m5 0 1 7h5l-2-7" fill="#f5f6fb"/><rect x="8" y="15" width="5" height="9" rx="1" fill="#202739"/><rect x="16" y="14" width="5" height="5" rx="1" fill="#7ab8ff"/></svg> Pizza store / centroid</span><span class="legend"><i class="dot" style="background:linear-gradient(90deg,#7ab8ff,#ff806e,#ffd166,#c8f169)"></i> Each color is one delivery zone</span><span class="legend"><b style="color:#f5f6fb">✛</b> Zone mean (where its store moves next)</span><span class="legend"><i class="dot" style="border:2px dashed #ffd166"></i> Your prediction</span><span class="legend"><i class="dot" style="border:1.5px dashed #f5f6fb"></i> Reference store (shown after the round)</span></div>
+      <div class="map-foot"><span class="legend"><i class="house-key"></i> House / data point</span><span class="legend"><svg class="shop-key" viewBox="0 0 28 26" aria-hidden="true"><path d="M4 10h20v14H4z" fill="#c8f169" stroke="#10131d" stroke-width="1.5"/><path d="M2 10 5 2h18l3 8z" fill="#ff806e" stroke="#10131d" stroke-width="1.5"/><path d="M7 3 5 10h5l1-7m5 0 1 7h5l-2-7" fill="#f5f6fb"/><rect x="8" y="15" width="5" height="9" rx="1" fill="#202739"/><rect x="16" y="14" width="5" height="5" rx="1" fill="#7ab8ff"/></svg> Pizza store / centroid</span><span class="legend"><i class="dot" style="background:linear-gradient(90deg,#7ab8ff,#ff806e,#ffd166,#c8f169)"></i> Each color is one delivery zone</span><span class="legend"><b style="color:#f5f6fb">✛</b> Zone mean (where its store moves next)</span><span class="legend"><i class="dot" style="border:2px dashed #ffd166"></i> Your guess</span><span class="legend"><i class="dot" style="border:1.5px dashed #f5f6fb"></i> Reference store (shown after the round)</span></div>
     </div>
     <aside class="panel side">
       <div><div class="section-label">Live performance</div><h3>How well does your city work?</h3><p class="side-intro">Distance and SSE update every time you move a store. Lower is better.</p></div>
@@ -55,7 +55,7 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
     <div class="panel"><h3>📊 How you’re scored</h3><p class="insight"><strong>Why not just minimize SSE?</strong> Adding stores never makes the best possible SSE worse, and with one store per house it reaches zero. So each city has a hidden <strong>intended number of stores</strong> that matches how its neighborhoods were generated. <strong>Model choice (50 pts):</strong> 50 for the intended k, 20 if you are off by one. <strong>Optimization (50 pts):</strong> full marks when your SSE matches the best reference SSE for the k you chose, falling to 0 at a 50% gap. Attempt 2 earns 85% and attempt 3 earns 70% of those points.</p></div>
   </section>
 </main>
-<div class="report-bg" id="reportBg" role="dialog" aria-modal="true" aria-labelledby="reportTitle"><div class="panel report"><div class="eyebrow">Final performance report</div><h2 id="reportTitle">Your pizza empire</h2><p>Benchmark SSE is the best of 60 seeded k-means++ runs for the number of stores you chose, and SSE gap compares your SSE with it. Reference SSE is the same benchmark at the intended number of stores. Prediction error is how far, on average, your predicted store positions were from where k-means actually moved them (map units).</p><div class="table-wrap"><table id="reportTable"></table></div><div class="btns"><button class="primary" id="again">↺ Play again</button><button class="ghost" id="closeReport">Close</button></div></div></div>
+<div class="report-bg" id="reportBg" role="dialog" aria-modal="true" aria-labelledby="reportTitle"><div class="panel report"><div class="eyebrow">Final performance report</div><h2 id="reportTitle">Your pizza empire</h2><p>Benchmark SSE is the best of 60 seeded k-means++ runs for the number of stores you chose, and SSE gap compares your SSE with it. Reference SSE is the same benchmark at the intended number of stores. Guess error is how far, on average, your guessed store positions were from where k-means actually moved them (map units).</p><div class="table-wrap"><table id="reportTable"></table></div><div class="btns"><button class="primary" id="again">↺ Play again</button><button class="ghost" id="closeReport">Close</button></div></div></div>
 <div class="toast" id="toast" role="status"></div>
 <script>
 (() => {
@@ -63,37 +63,34 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
  const MAX_K=8, MAX_ATTEMPTS=3, ATTEMPT_MULT=[1,.85,.7], SUCCESS_GAP=.05, REF_RUNS=60;
  const $=id=>document.getElementById(id);
  const city=$('city'), runners=$('runners');
- function makeHouses(centers, counts, spread, extras=[]) {
-   const pts=[];
+ // Houses scatter around each neighborhood center (seeded Gaussian, slightly flattened), so borders overlap and look natural.
+ function makeHouses(centers, counts, spread, extras=[], seed=1) {
+   const rand=mulberry32(seed),pts=[];
    centers.forEach((c,ci)=>{
-     const sp=Array.isArray(spread)?spread[ci]:spread;
+     const sd=(Array.isArray(spread)?spread[ci]:spread)/2;
      for(let j=0;j<counts[ci];j++){
-       const angle=(j*2.399963229728653)+(ci*1.17);
-       const radius=sp*(0.18+0.82*Math.sqrt((j+0.5)/counts[ci]));
-       const wobble=1+0.17*Math.sin(j*2.3+ci);
-       const x=c[0]+Math.cos(angle)*radius*wobble;
-       const y=c[1]+Math.sin(angle)*radius*0.76*wobble;
-       pts.push([Math.max(35,Math.min(685,x)),Math.max(35,Math.min(425,y))]);
+       const r=Math.sqrt(-2*Math.log(1-rand())),a=2*Math.PI*rand();
+       pts.push([Math.max(35,Math.min(685,c[0]+r*Math.cos(a)*sd)),Math.max(35,Math.min(425,c[1]+r*Math.sin(a)*sd*.8))]);
      }
    });
    return pts.concat(extras);
  }
  // The intended k of a generated map is the number of neighborhoods it was built from.
- const neighborhoods=(centers,counts,spread,extras)=>({k:centers.length,houses:makeHouses(centers,counts,spread,extras)});
+ const neighborhoods=(centers,counts,spread,extras,seed)=>({k:centers.length,houses:makeHouses(centers,counts,spread,extras,seed)});
  const rounds=[
-  {name:'Starterville',level:'Level 1 · Warm-up',challenge:'Clear neighborhoods',mission:'Start simple. Count the neighborhoods you see, choose that many stores, place them, then run k-means and watch each store move to the mean of its zone.',k:3,houses:[[110,100],[130,130],[160,105],[175,145],[125,175],[190,180],[220,125],[205,95],[380,100],[420,120],[450,95],[475,140],[400,165],[450,185],[500,170],[470,205],[260,330],[290,360],[320,320],[350,370],[385,335],[330,400],[280,405],[390,405]]},
-  {name:'Riverside',level:'Level 2 · Apprentice',challenge:'Four neighborhoods',mission:'One more neighborhood and more houses. The groups are still easy to tell apart, so focus on placing each store near the middle of its group.',...neighborhoods([[160,125],[500,115],[205,340],[540,335]],[10,10,10,10],74)},
-  {name:'Harbor District',level:'Level 3 · Navigator',challenge:'Uneven neighborhood sizes',mission:'Neighborhoods now have very different sizes and sit closer together. A small neighborhood is still a neighborhood, and a big one is still just one.',...neighborhoods([[140,125],[345,110],[565,130],[235,330],[495,335]],[18,7,13,9,15],[78,56,74,60,78])},
-  {name:'Metrovale',level:'Level 4 · Strategist',challenge:'Outliers + tighter borders',mission:'Six neighborhoods with tighter borders, plus a few isolated houses. Does a lonely house deserve its own store, or is it part of a bigger district? Squared distance gives outliers a strong pull.',...neighborhoods([[125,120],[325,105],[555,125],[160,335],[385,310],[590,345]],[14,8,12,9,15,10],[76,58,74,62,78,62],[[40,235],[690,40],[460,440]])},
-  {name:'Night Shift',level:'Level 5 · Master',challenge:'Bridges + outliers + crowding',mission:'Final challenge: seven crowded neighborhoods of different sizes, houses bridging some of them, and stray outliers. Several values of k can look plausible, so think about where adding one more store stops paying off.',...neighborhoods([[100,110],[275,100],[465,105],[625,190],[140,340],[350,300],[570,360]],[12,8,13,9,11,14,10],[64,48,66,52,62,68,54],[[180,100],[195,112],[380,95],[230,330],[255,320],[690,435],[30,230]])}
+  {name:'Starterville',level:'Level 1 · Warm-up',challenge:'Fuzzy neighborhoods',mission:'Start here. Look for where houses bunch up, choose that many stores, place them, then run k-means and watch each store move to the mean of its zone.',...neighborhoods([[180,140],[480,130],[330,340]],[12,12,12],120,[],49)},
+  {name:'Riverside',level:'Level 2 · Apprentice',challenge:'Blurred borders',mission:'More houses, and the edges of neighborhoods blur into each other. Look for dense centers rather than empty gaps.',...neighborhoods([[170,135],[470,120],[215,330],[520,335]],[13,12,14,12],143,[],57)},
+  {name:'Harbor District',level:'Level 3 · Navigator',challenge:'Uneven neighborhood sizes',mission:'Neighborhoods now have very different sizes and overlap more. A small neighborhood is still a neighborhood, and a big one is still just one.',...neighborhoods([[150,130],[350,115],[560,140],[240,330],[490,335]],[20,9,15,10,17],[137,104,131,110,137],[],51)},
+  {name:'Metrovale',level:'Level 4 · Strategist',challenge:'Outliers + crowding',mission:'Six crowded neighborhoods plus a few isolated houses. Does a lonely house deserve its own store, or is it part of a bigger district? Squared distance gives outliers a strong pull.',...neighborhoods([[130,125],[330,110],[555,130],[165,335],[385,315],[590,345]],[15,9,13,10,16,11],[127,102,123,106,130,104],[[40,240],[690,40],[460,440]],50)},
+  {name:'Night Shift',level:'Level 5 · Master',challenge:'Bridges + outliers + crowding',mission:'Final challenge: seven neighborhoods that run into each other, houses bridging some of them, and stray outliers. Several values of k look plausible, so think about where adding one more store stops paying off.',...neighborhoods([[105,115],[280,105],[470,110],[625,200],[145,340],[355,305],[570,365]],[13,9,14,10,12,15,11],[125,102,127,106,117,130,110],[[185,110],[200,118],[380,105],[235,330],[255,322],[690,435],[30,230]],1)}
  ];
- // Scaffolds fade as cities get harder. predict = predicted iterations required before free iteration unlocks.
+ // Scaffolds fade as cities get harder. predict = guesses required (drag a ring, then run a step) before free iteration unlocks.
  const AIDS=[{zones:1,means:1,lines:1,predict:2},{zones:1,means:1,lines:1,predict:2},{zones:0,means:1,lines:1,predict:1},{zones:0,means:0,lines:1,predict:1},{zones:0,means:0,lines:0,predict:0}];
  const AID_NAMES={zones:'Zone borders',means:'Zone means',lines:'Delivery lines'};
  const MAX_TOTAL=rounds.length*100;
- // phase: choose (pick k) → place (click to drop k stores) → play (optimize, submit) ⇄ predict (drag ghosts) → done (round scored)
+ // phase: choose (pick k) → place (click to drop k stores) → play (guess, optimize, submit) → done (round scored)
  let round=0, houses=[], shops=[], phase='choose', pendingK=0, chosenK=0, dragging=-1, dragGhost=-1, attempts=[], results=[], refCache={};
- // ghosts: predicted store positions; trail: last move (from → to, with the ghosts it was predicted by); history: SSE after each change
+ // ghosts: guessed store positions, present while guesses are still required; trail: last move (from → to, with the ghosts it was predicted by); history: SSE after each change
  let ghosts=null, trail=null, history=[], predictions=[], animating=false;
  const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
  const d2=(a,b)=>(a[0]-b[0])**2+(a[1]-b[1])**2;
@@ -137,13 +134,16 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
    round=n;houses=rounds[n].houses.map(p=>p.slice());shops=[];attempts=[];predictions=[];phase='choose';pendingK=0;chosenK=0;runners.innerHTML='';
    $('roundLabel').textContent=`ROUND ${n+1} / ${rounds.length}`;$('houseCount').textContent=houses.length;$('difficulty').textContent=rounds[n].level;$('mapDifficulty').textContent=rounds[n].level+' · '+rounds[n].challenge;
    const a=AIDS[n],dropped=n?Object.keys(AID_NAMES).filter(k=>AIDS[n-1][k]&&!a[k]).map(k=>AID_NAMES[k].toLowerCase()):[];
-   $('aids').innerHTML=Object.keys(AID_NAMES).map(k=>`<span class="${a[k]?'on':'off'}">${AID_NAMES[k]}</span>`).join('')+`<span class="${a.predict?'on':''}">${a.predict?`Predict ${a.predict} step${a.predict>1?'s':''} first`:'Predictions optional'}</span>`;
+   $('aids').innerHTML=Object.keys(AID_NAMES).map(k=>`<span class="${a[k]?'on':'off'}">${AID_NAMES[k]}</span>`).join('')+`<span class="${a.predict?'on':''}">${a.predict?`Guess ${a.predict} move${a.predict>1?'s':''} first`:'No guessing required'}</span>`;
    enterChoose();hint('<b>Mission:</b> '+rounds[n].mission+(dropped.length?` <b>New this level:</b> ${dropped.join(' and ')} are now hidden.`:''));
  }
  function resetMoves(){ghosts=null;trail=null;history=[];}
+ const guessesLeft=()=>Math.max(0,AIDS[round].predict-predictions.length);
+ // While guesses are required, every store gets a dashed ring to drag to where the student thinks it will move.
+ function armGhosts(){ghosts=phase==='play'&&guessesLeft()?shops.map(p=>p.slice()):null;}
  function playPrompt(){
-   const need=Math.max(0,AIDS[round].predict-predictions.length);
-   if(need)prompt('STEP 3 · PREDICT','Before k-means moves anything, predict where each store will go.',`Press “Predict, then iterate”. ${need} more prediction${need>1?'s':''} unlock free iteration.`,'🔮');
+   const need=guessesLeft();
+   if(need)prompt('STEP 3 · GUESS',`Where will each store move next? (${need} guess${need>1?'es':''} to go)`,'Drag each dashed ring to where you think its store will go, then press “Run 1 step” to check.','🔮');
    else prompt('STEP 3 · OPTIMIZE','All stores are open. Now let k-means improve them.','Run one iteration at a time, or run to convergence. Submit when you are happy with the SSE.','🧭');
  }
  function enterChoose(){phase='choose';shops=[];resetMoves();prompt('START HERE · STEP 1','How many pizza stores do you think are needed to serve these neighborhoods well?','Inspect the map before placing anything. Pick a number from 1 to 8 in the panel.','🤔');update();}
@@ -156,15 +156,11 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
    }else if(phase==='done'){
      $('controlsLabel').textContent='Round complete';
      c.innerHTML=`<div class="actions"><button class="primary wide" data-act="next">${round<rounds.length-1?'Next city →':'See final report →'}</button></div>`;
-   }else if(phase==='predict'){
-     $('controlsLabel').textContent=`Predict the next update (k = ${chosenK})`;
-     c.innerHTML=`<p class="question">Drag each dashed ghost to where you think its store will move.</p><div class="actions" style="margin-top:10px"><button class="primary wide" data-act="reveal">🔮 Reveal the update</button><button class="ghost wide" data-act="cancelPredict">Cancel</button></div>`;
    }else{
-     const ready=phase==='play'?'':'disabled',need=Math.max(0,AIDS[round].predict-predictions.length);
+     const ready=phase==='play'?'':'disabled',need=phase==='play'&&guessesLeft();
      $('controlsLabel').textContent=`Step 2 · Place & optimize (k = ${chosenK})`;
-     const iter=need?`<button class="secondary" data-act="predict" ${ready}>🔮 Predict, then iterate</button>`:`<button class="secondary" data-act="iterate" ${ready}>▶ 1 iteration</button>`;
-     const conv=`<button class="secondary" data-act="converge" ${need?`disabled title="Make ${need} more prediction${need>1?'s':''} first"`:ready}>⏩ To convergence</button>`;
-     c.innerHTML=`<div class="actions"><button class="primary wide" data-act="submit" ${ready}>✓ Submit solution · attempt ${attempts.length+1} of ${MAX_ATTEMPTS}</button>${iter}${conv}${need?'':`<button class="secondary wide" data-act="predict" ${ready}>🔮 Predict the next move</button>`}<button class="secondary" data-act="replace">↺ Re-place stores</button><button class="ghost" data-act="changek">Change k</button>${attempts.length?'<button class="ghost wide" data-act="finish">Finish round with my best score</button>':''}</div>`;
+     const conv=`<button class="secondary" data-act="converge" ${need?`disabled title="Make ${need} more guess${need>1?'es':''} first"`:ready}>⏩ To convergence</button>`;
+     c.innerHTML=`<div class="actions"><button class="primary wide" data-act="submit" ${ready}>✓ Submit solution · attempt ${attempts.length+1} of ${MAX_ATTEMPTS}</button><button class="secondary" data-act="iterate" ${ready}>▶ Run 1 step</button>${conv}<button class="secondary" data-act="replace">↺ Re-place stores</button><button class="ghost" data-act="changek">Change k</button>${attempts.length?'<button class="ghost wide" data-act="finish">Finish round with my best score</button>':''}</div>`;
    }
  }
  function update(){
@@ -185,15 +181,15 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
    if(a.zones&&shops.length>1)shops.forEach((p,j)=>{const poly=cell(j);if(poly.length>2)s+=`<path d="M${poly.map(v=>v[0].toFixed(1)+' '+v[1].toFixed(1)).join(' L')}Z" fill="${colors[j]}" fill-opacity=".07" stroke="${colors[j]}" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="6 5"/>`;});
    if(shops.length&&a.lines)houses.forEach((h,i)=>{const p=shops[m.as[i]];s+=`<line x1="${h[0]}" y1="${h[1]}" x2="${p[0]}" y2="${p[1]}" stroke="${colors[m.as[i]]}" stroke-opacity=".17" stroke-width="1.3"/>`;});
    houses.forEach((h,i)=>{const z=m.as[i];s+=`<circle cx="${h[0]}" cy="${h[1]}" r="5.3" fill="${z<0?'#f5f6fb':colors[z]}" stroke="#f6f7fb" stroke-width="1.1"><title>House ${i+1}${z<0?'':' · Zone '+String.fromCharCode(65+z)}</title></circle>`;});
-   // Zone means: where each store goes on the next update. Hidden while predicting, and until the required predictions are made.
+   // Zone means: where each store goes on the next update. Hidden until the required guesses are made.
    if(a.means&&phase==='play'&&!animating&&predictions.length>=a.predict)zoneMeans(m.as).forEach((mu,j)=>{if(!mu)return;const p=shops[j];
      if(dist(mu,p)>3)s+=`<line x1="${p[0]}" y1="${p[1]}" x2="${mu[0]}" y2="${mu[1]}" stroke="${colors[j]}" stroke-width="1.6" stroke-dasharray="2 4"/>`;
      s+=`<g><title>Mean of Zone ${String.fromCharCode(65+j)}: Store ${String.fromCharCode(65+j)} moves here on the next update</title><path d="M${mu[0]-9} ${mu[1]}H${mu[0]+9}M${mu[0]} ${mu[1]-9}V${mu[1]+9}" stroke="#151b28" stroke-width="5"/><path d="M${mu[0]-9} ${mu[1]}H${mu[0]+9}M${mu[0]} ${mu[1]-9}V${mu[1]+9}" stroke="${colors[j]}" stroke-width="2.2"/></g>`;});
-   if(trail&&phase!=='predict')trail.from.forEach((f,j)=>{const t=trail.to[j];s+=`<circle cx="${f[0]}" cy="${f[1]}" r="6" fill="none" stroke="${colors[j]}" stroke-width="1.5" stroke-opacity=".8"><title>Where Store ${String.fromCharCode(65+j)} was</title></circle>`+arrow(f,t,colors[j]);
-     const g=trail.ghosts&&trail.ghosts[j];if(g)s+=`<g><title>Your prediction for Store ${String.fromCharCode(65+j)}</title><line x1="${g[0]}" y1="${g[1]}" x2="${t[0]}" y2="${t[1]}" stroke="#ffd166" stroke-width="1.2" stroke-dasharray="3 3" stroke-opacity=".8"/><path d="M${g[0]-6} ${g[1]-6}L${g[0]+6} ${g[1]+6}M${g[0]+6} ${g[1]-6}L${g[0]-6} ${g[1]+6}" stroke="#ffd166" stroke-width="2.4"/></g>`;});
+   if(trail)trail.from.forEach((f,j)=>{const t=trail.to[j];s+=`<circle cx="${f[0]}" cy="${f[1]}" r="6" fill="none" stroke="${colors[j]}" stroke-width="1.5" stroke-opacity=".8"><title>Where Store ${String.fromCharCode(65+j)} was</title></circle>`+arrow(f,t,colors[j]);
+     const g=trail.ghosts&&trail.ghosts[j];if(g)s+=`<g><title>Your guess for Store ${String.fromCharCode(65+j)}</title><line x1="${g[0]}" y1="${g[1]}" x2="${t[0]}" y2="${t[1]}" stroke="#ffd166" stroke-width="1.2" stroke-dasharray="3 3" stroke-opacity=".8"/><path d="M${g[0]-6} ${g[1]-6}L${g[0]+6} ${g[1]+6}M${g[0]+6} ${g[1]-6}L${g[0]-6} ${g[1]+6}" stroke="#ffd166" stroke-width="2.4"/></g>`;});
    if(phase==='done')reference(rounds[round].k).centers.forEach(p=>{s+=`<g><title>Reference store (intended k = ${rounds[round].k})</title><circle cx="${p[0]}" cy="${p[1]}" r="17" fill="none" stroke="#f5f6fb" stroke-width="2" stroke-dasharray="4 4"/><text x="${p[0]}" y="${p[1]+33}" text-anchor="middle" font-size="9" font-weight="900" fill="#f5f6fb" stroke="#151b28" stroke-width="3" paint-order="stroke">REF</text></g>`;});
    shops.forEach((p,i)=>{s+=`<g class="shop" data-shop="${i}" style="cursor:${phase==='done'?'default':'grab'}"><title>Drag Store ${String.fromCharCode(65+i)} to move centroid ${i+1}</title><circle cx="${p[0]}" cy="${p[1]}" r="27" fill="${colors[i]}" fill-opacity=".15" stroke="${colors[i]}" stroke-opacity=".55" stroke-width="1.5"/><path d="M ${p[0]-17} ${p[1]-3} L ${p[0]-13} ${p[1]-15} Q ${p[0]} ${p[1]-19} ${p[0]+13} ${p[1]-15} L ${p[0]+17} ${p[1]-3} Z" fill="#f5f6fb" stroke="#10131d" stroke-width="2"/><path d="M ${p[0]-17} ${p[1]-3} Q ${p[0]-12} ${p[1]+4} ${p[0]-7} ${p[1]-3} Q ${p[0]-2} ${p[1]+4} ${p[0]+3} ${p[1]-3} Q ${p[0]+8} ${p[1]+4} ${p[0]+13} ${p[1]-3} L ${p[0]+17} ${p[1]+1} L ${p[0]+15} ${p[1]+5} L ${p[0]-15} ${p[1]+5} Z" fill="${colors[i]}" stroke="#10131d" stroke-width="1.5"/><rect x="${p[0]-14}" y="${p[1]+5}" width="28" height="17" rx="2" fill="${colors[i]}" stroke="#10131d" stroke-width="1.5"/><rect x="${p[0]-10}" y="${p[1]+9}" width="7" height="13" rx="1" fill="#202739"/><rect x="${p[0]+2}" y="${p[1]+8}" width="8" height="7" rx="1" fill="#f5f6fb" stroke="#10131d" stroke-width="1"/><text x="${p[0]+6}" y="${p[1]+14}" text-anchor="middle" font-size="7" font-weight="900" fill="#10131d">${i+1}</text><text x="${p[0]}" y="${p[1]-30}" text-anchor="middle" font-size="11" font-weight="900" fill="${colors[i]}" stroke="#151b28" stroke-width="3" paint-order="stroke">STORE ${String.fromCharCode(65+i)}</text></g>`;});
-   if(phase==='predict')ghosts.forEach((g,j)=>{const p=shops[j];s+=`<line x1="${p[0]}" y1="${p[1]}" x2="${g[0]}" y2="${g[1]}" stroke="#ffd166" stroke-width="1.5" stroke-dasharray="4 4"/><g class="ghost" data-ghost="${j}" style="cursor:grab"><title>Drag to predict where Store ${String.fromCharCode(65+j)} will move</title><circle cx="${g[0]}" cy="${g[1]}" r="21" fill="${colors[j]}" fill-opacity=".18" stroke="#ffd166" stroke-width="2.5" stroke-dasharray="5 4"/><text x="${g[0]}" y="${g[1]+5}" text-anchor="middle" font-size="14" font-weight="900" fill="#ffd166" stroke="#151b28" stroke-width="3" paint-order="stroke">${String.fromCharCode(65+j)}?</text></g>`;});
+   if(ghosts)ghosts.forEach((g,j)=>{const p=shops[j];s+=`<line x1="${p[0]}" y1="${p[1]}" x2="${g[0]}" y2="${g[1]}" stroke="#ffd166" stroke-width="1.5" stroke-dasharray="4 4"/><g class="ghost" data-ghost="${j}" style="cursor:grab"><title>Drag to guess where Store ${String.fromCharCode(65+j)} will move</title><circle cx="${g[0]}" cy="${g[1]}" r="21" fill="${colors[j]}" fill-opacity=".18" stroke="#ffd166" stroke-width="2.5" stroke-dasharray="5 4"/><text x="${g[0]}" y="${g[1]+5}" text-anchor="middle" font-size="14" font-weight="900" fill="#ffd166" stroke="#151b28" stroke-width="3" paint-order="stroke">${String.fromCharCode(65+j)}?</text></g>`;});
    s+='<text x="18" y="452" fill="#71809c" font-size="10" letter-spacing="1.5">NORTH DISTRICT</text><text x="702" y="452" text-anchor="end" fill="#71809c" font-size="10" letter-spacing="1.5">'+rounds[round].name.toUpperCase()+'</text>';
    city.innerHTML=s;city.classList.toggle('placing',phase==='place');
  }
@@ -225,12 +221,12 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
  function point(evt){const r=city.getBoundingClientRect();return [Math.max(20,Math.min(700,(evt.clientX-r.left)*720/r.width)),Math.max(25,Math.min(440,(evt.clientY-r.top)*470/r.height))];}
  city.addEventListener('pointerdown',e=>{
    if(animating)return;
-   if(phase==='predict'){const gh=e.target.closest('.ghost');if(gh){dragGhost=+gh.dataset.ghost;city.setPointerCapture?.(e.pointerId);e.preventDefault();}return;}
+   if(ghosts){const gh=e.target.closest('.ghost');if(gh){dragGhost=+gh.dataset.ghost;city.setPointerCapture?.(e.pointerId);e.preventDefault();}return;}
    const el=e.target.closest('.shop');
    if(el&&phase!=='done'){dragging=+el.dataset.shop;trail=null;city.setPointerCapture?.(e.pointerId);e.preventDefault();return;}
    if(phase!=='place')return;
    shops.push(point(e));
-   if(shops.length===chosenK){phase='play';history=[{sse:sseOf(shops),type:'start'}];playPrompt();}
+   if(shops.length===chosenK){phase='play';history=[{sse:sseOf(shops),type:'start'}];armGhosts();playPrompt();}
    else prompt('STEP 2 · PLACE',`Click the map to place store ${shops.length+1} of ${chosenK}.`,'Put each store where you think a neighborhood’s center is. You can drag stores afterwards.','📍');
    update();
  });
@@ -244,17 +240,15 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
  function moveTo(from,to,g=null){
    trail={from,to,ghosts:g};animating=true;const t0=performance.now(),T=480;
    (function frame(now){const t=Math.min(1,(now-t0)/T),e=1-(1-t)**3;shops=from.map((p,j)=>[p[0]+(to[j][0]-p[0])*e,p[1]+(to[j][1]-p[1])*e]);render();
-     if(t<1)requestAnimationFrame(frame);else{shops=to.map(p=>p.slice());animating=false;update();}})(t0);
+     if(t<1)requestAnimationFrame(frame);else{shops=to.map(p=>p.slice());animating=false;armGhosts();update();}})(t0);
  }
- function startPredict(){ghosts=shops.map(p=>p.slice());trail=null;phase='predict';prompt('PREDICT','Where will each store move on the next update?','Houses keep their zone colors: that is the assignment step. Drag each dashed ghost to where you expect its store to go, then reveal.','🔮');update();}
- function reveal(){
-   const before=shops.map(p=>p.slice()),after=step(shops),g=ghosts,n=g.length;
-   const err=g.reduce((s,p,j)=>s+dist(p,after[j]),0)/n,stay=before.reduce((s,p,j)=>s+dist(p,after[j]),0)/n;
-   predictions.push({err,stay});ghosts=null;phase='play';history.push({sse:sseOf(after),type:'iter'});playPrompt();moveTo(before,after,g);
-   const need=Math.max(0,AIDS[round].predict-predictions.length),verdict=err<12?'Spot on!':err<30?'Close.':'Not quite.';
-   hint(`<b>${verdict}</b> Your ghosts (gold ✕) were on average ${err.toFixed(0)} map units from where the stores actually went${stay>1?`; leaving them in place would have been ${stay.toFixed(0)} off`:', and the stores did not move at all because k-means had already converged'}. Each store moved to the <b>mean</b> of the houses in its zone: their average x and average y. ${need?`Make ${need} more prediction${need>1?'s':''} to unlock free iteration.`:'Free iteration is unlocked, and you can predict again any time.'}`);
- }
- function iterate(){const before=shops.map(p=>p.slice()),after=step(shops),moved=after.reduce((s,p,j)=>s+dist(p,before[j]),0);history.push({sse:sseOf(after),type:'iter'});moveTo(before,after);
+ function iterate(){const before=shops.map(p=>p.slice()),after=step(shops),moved=after.reduce((s,p,j)=>s+dist(p,before[j]),0),g=ghosts;history.push({sse:sseOf(after),type:'iter'});ghosts=null;moveTo(before,after,g);
+   if(g){
+     const n=g.length,err=g.reduce((s,p,j)=>s+dist(p,after[j]),0)/n,stay=moved/n;predictions.push({err,stay});playPrompt();
+     const need=guessesLeft(),verdict=err<12?'Spot on!':err<30?'Close.':'Not quite.';
+     hint(`<b>${verdict}</b> Your guesses (gold ✕) were on average ${err.toFixed(0)} map units from where the stores actually went${stay>1?`; leaving them in place would have been ${stay.toFixed(0)} off`:', and the stores did not move at all because k-means had already converged'}. Each store moved to the <b>mean</b> of the houses in its zone: their average x and average y. ${need?`Drag the rings again for ${need} more guess${need>1?'es':''}.`:'Guessing is done: run steps freely or jump to convergence.'}`);
+     return;
+   }
    hint(moved<.5?'<b>Converged!</b> The stores barely moved, so this start has reached a stable solution. That does not guarantee the best possible SSE: a different starting layout can settle somewhere better.':`<b>Centroids updated.</b> The stores moved ${moved.toFixed(1)} map units toward the means of their assigned houses. Keep iterating until they stop moving.`);}
  function converge(){const from=shops.map(p=>p.slice()),start=sseOf(shops);let cs=from,it=0;for(;it<200;it++){const n=step(cs),moved=n.reduce((s,p,j)=>s+dist(p,cs[j]),0);cs=n;history.push({sse:sseOf(cs),type:'iter'});if(moved<.01)break;}moveTo(from,cs);
    hint(`<b>Converged after ${it+1} iteration${it?'s':''}.</b> SSE went from ${fmt(start)} to ${fmt(sseOf(cs))}. K-means only finds a local minimum, so a different starting layout may do better.`);}
@@ -292,13 +286,13 @@ main{max-width:1240px;margin:auto;padding:0 24px 36px}.intro{display:flex;justif
  function showReport(){
    const rows=results.map(r=>`<tr><td>${r.city}</td><td class="${r.k===r.kStar?'ok':'off'}">${r.k}</td><td>${r.kStar}</td><td>${fmt(r.sse)}</td><td>${fmt(r.ref)}</td><td>${pct(r.gap)}</td><td>${fmt(r.refStar)}</td><td>${r.attempts} / ${MAX_ATTEMPTS}</td><td>${r.pred==null?'—':r.pred.toFixed(0)}</td><td>${r.points}</td></tr>`).join('');
    const total=results.reduce((s,r)=>s+r.points,0);
-   $('reportTable').innerHTML=`<thead><tr><th>City</th><th>Your k</th><th>Reference k</th><th>Your SSE</th><th>Benchmark SSE<br>(your k)</th><th>SSE gap</th><th>Reference SSE<br>(reference k)</th><th>Attempts</th><th>Prediction<br>error</th><th>Points</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="9">Total score</td><td>${total} / ${MAX_TOTAL}</td></tr></tfoot>`;
+   $('reportTable').innerHTML=`<thead><tr><th>City</th><th>Your k</th><th>Reference k</th><th>Your SSE</th><th>Benchmark SSE<br>(your k)</th><th>SSE gap</th><th>Reference SSE<br>(reference k)</th><th>Attempts</th><th>Guess<br>error</th><th>Points</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="9">Total score</td><td>${total} / ${MAX_TOTAL}</td></tr></tfoot>`;
    $('reportBg').classList.add('show');$('again').focus();
  }
  $('controls').addEventListener('click',e=>{
    const kb=e.target.closest('[data-k]');if(kb){pendingK=+kb.dataset.k;renderControls();return;}
    const b=e.target.closest('[data-act]');if(!b||b.disabled||animating)return;
-   ({confirm:()=>{chosenK=pendingK;enterPlace();},iterate,converge,predict:startPredict,reveal,cancelPredict:()=>{ghosts=null;phase='play';playPrompt();update();},submit,replace:enterPlace,changek:()=>{pendingK=chosenK;chosenK=0;enterChoose();},finish:()=>finishRound(false),next:()=>round<rounds.length-1?initRound(round+1):showReport()})[b.dataset.act]();
+   ({confirm:()=>{chosenK=pendingK;enterPlace();},iterate,converge,submit,replace:enterPlace,changek:()=>{pendingK=chosenK;chosenK=0;enterChoose();},finish:()=>finishRound(false),next:()=>round<rounds.length-1?initRound(round+1):showReport()})[b.dataset.act]();
  });
  $('again').onclick=()=>{$('reportBg').classList.remove('show');results=[];initRound(0);};
  $('closeReport').onclick=()=>$('reportBg').classList.remove('show');
