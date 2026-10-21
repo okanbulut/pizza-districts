@@ -19,6 +19,15 @@ Open `docs/index.html` in a modern browser. No build step, dependencies, API key
 
 Live metrics: total delivery distance, SSE (the k-means objective), attempts used, and round score.
 
+## Characters
+All characters are drawn in the page's own SVG (no image files) and can be hidden with the **Characters** button above the map. Movement is skipped for players who prefer reduced motion.
+
+- **Pat Grid, city planner:** briefs the player before each city, hinting at its twist (fuzzy edges, uneven sizes, outliers, bridges) without revealing the intended k. The **Brief** button reopens it.
+- **Chefs:** one beside each store. They wave while a k-means step runs and cheer when a round succeeds.
+- **Delivery drivers:** after each step, a driver rides from each store to every house in its zone at the same speed, so long trips visibly take longer.
+- **Grumpy residents:** houses more than twice the typical delivery distance of the reference layout frown. The legend shows how many there are and what share of SSE they cause, which illustrates why squared distance punishes far-away houses.
+- **Rosa Crust, food critic:** presents the final report with a star rating and a short review based on chosen k, SSE gaps, and attempts.
+
 ## Scoring and benchmark
 Minimizing SSE alone always favors more clusters (one store per house gives SSE = 0), so each map has a hidden **intended k** equal to the number of neighborhoods it was generated from. The benchmark SSE for any k is the best of 60 k-means++ runs with a fixed seed per city and k, so it is identical on every page load.
 
